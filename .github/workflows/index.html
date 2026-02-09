@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quiet Hallways</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.js">
+<meta name="theme-color" content="#000000">
+
+<style>
+body {
+  margin: 0;
+  background: #020202;
+  color: #e2e2e2;
+  font-family: monospace;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Screens */
+#loading, #endfade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 2s ease;
+  z-index: 20;
+}
+
+#endfade {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Main */
+#container {
+  width: 90%;
+  max-width: 620px;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+#text {
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  opacity: 0;
+  transition: opacity 2s ease;
+}
+
+#choices {
+  margin-top: 26px;
+  opacity: 0;
+  transition: opacity 1.5s ease;
+}
+
+/* Choices */
+.choice {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: #c9c9c9;
+  font-size: 14px;
+  padding: 6px 0;
+  text-align: left;
+  cursor: pointer;
+}
+.choice::before { content: "> "; color: #9b9b9b; }
+.choice:hover,
+.choice:hover::before { color: #fff; }
+
+/* UI */
+#ui {
+  position: fixed;
+  top: 10px;
+  right: 14px;
+  font-size: 12px;
+  color: #777;
+  cursor: pointer;
+}
+
+#installBtn {
+  position: fixed;
+  bottom: 12px;
+  right: 14px;
+  font-size: 12px;
+  color: #aaa;
+  cursor: pointer;
+  display: none;
+}
+
+/* End buttons */
+.end-btn {
+  margin-top: 14px;
+  background: none;
+  border: 1px solid #555;
+  color: #ccc;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-family: monospace;
+}
+.end-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div style="font-size:22px;letter-spacing:2px;">QUIET HALLWAYS</div>
+  <div style="font-size:12px;color:#777;margin-top:6px;">a short interactive story</div>
+</div>
+
+<div id="endfade"></div>
+
+<div id="ui">🔊 sound on</div>
+<div id="installBtn">⬇ install app</div>
+
+<div id="container">
+  <div id="text"></div>
+  <div id="choices"></div>
+</div>
+
+<!-- Audio -->
+<audio id="clickSound" preload="auto">
+  <source src="https://audio.jukehost.co.uk/OslPSf81kCBvMIu5oQyylhU0dOfka4hi">
+</audio>
+
+<audio id="rainSound" preload="auto" loop>
+  <source src="https://audio.jukehost.co.uk/b6JC1G5wnlfr13w5afixMozaOnD9sfb3">
+</audio>
+
+<audio id="pianoSound" preload="auto" loop>
+  <source src="https://audio.jukehost.co.uk/hheozlHHWYw947TPhiaOMtS3g2wiKwLU">
+</audio>
+
+<script>
+let soundOn = true;
+let audioUnlocked = false;
+let gameEnded = false;
+
+const ui = document.getElementById("ui");
+const installBtn = document.getElementById("installBtn");
+const clickSound = document.getElementById("clickSound");
+const rainSound = document.getElementById("rainSound");
+const pianoSound = document.getElementById("pianoSound");
+const textEl = document.getElementById("text");
+const choicesEl = document.getElementById("choices");
+const endfade = document.getElementById("endfade");
+
+/* Unlock audio */
+function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  rainSound.volume = 0.35;
+  pianoSound.volume = 0.15;
+  if (soundOn) {
+    rainSound.play().catch(()=>{});
+    pianoSound.play().catch(()=>{});
+  }
+}
+["click","touchstart","keydown"].forEach(e =>
+  document.addEventListener(e, unlockAudio, { once:true })
+);
+
+/* UI */
+ui.onclick = () => {
+  soundOn = !soundOn;
+  ui.textContent = soundOn ? "🔊 sound on" : "🔇 sound off";
+  soundOn ? (rainSound.play(), pianoSound.play()) : (rainSound.pause(), pianoSound.pause());
+};
+
+function playClick() {
+  if (soundOn) {
+    clickSound.currentTime = 0;
+    clickSound.play();
+  }
+}
+
+/* Scenes */
+const scenes = {
+  hospital: {
+    text:
+`You wake up in a hospital bed.
+
+The lights hum softly.
+Rain taps against a window.
+
+Your name is Dario.
+You’re 16 years old.
+
+"You have urinary incontinence."
+
+A diagnosis.
+Not a choice.`,
+    choices: [["Stare at the ceiling","hospital2"],["Ask if it stops","hospital2"]]
+  },
+  hospital2:{ text:`They say it isn’t your fault.`, choices:[["Go home","home"]] },
+  home:{
+    text:`Your mom sits beside you.\n"You don’t have to go."\nYou feel okay.`,
+    choices:[["Stay home","end_home"],["Go to school","hallway"]]
+  },
+  hallway:{
+    text:`The hallway is loud.\nSomeone notices.`,
+    choices:[["Keep walking","classroom"],["Let it hurt","end_alone"]]
+  },
+  classroom:{
+    text:`You sit carefully.`,
+    choices:[["Focus","end_strength"],["Text someone","end_support"]]
+  },
+
+  end_home:{ text:`You stayed safe.`, choices:[["Credits","credits"]] },
+  end_alone:{ text:`You shouldn’t have to carry it alone.`, choices:[["Credits","credits"]] },
+  end_strength:{ text:`You kept going.`, choices:[["Credits","credits"]] },
+  end_support:{ text:`You weren’t invisible.`, choices:[["Credits","credits"]] },
+
+  credits:{
+    text:
+`Quiet Hallways
+
+UI Creator: KayDario_Bark
+Game Coder: KayDario_Bark
+Scripter for Audio: KayDario_Bark
+Audio Holders: Respective Owners
+Founder: KayDario_Bark`,
+    choices:[]
+  }
+};
+
+function showScene(key) {
+  if (gameEnded) return;
+  const scene = scenes[key];
+  textEl.style.opacity = 0;
+  choicesEl.style.opacity = 0;
+
+  setTimeout(()=>{ textEl.textContent = scene.text; textEl.style.opacity = 1; },500);
+
+  setTimeout(()=>{
+    choicesEl.innerHTML="";
+    scene.choices.forEach(c=>{
+      const b=document.createElement("button");
+      b.className="choice";
+      b.textContent=c[0];
+      b.onclick=()=>{
+        playClick();
+        showScene(c[1]);
+        if (c[1]==="credits") endGame();
+      };
+      choicesEl.appendChild(b);
+    });
+    choicesEl.style.opacity=1;
+  },1600);
+}
+
+/* Fade audio */
+function fadeOutAudio(audio) {
+  const fade = setInterval(()=>{
+    if (audio.volume > 0.02) audio.volume -= 0.02;
+    else { audio.pause(); clearInterval(fade); }
+  },100);
+}
+
+/* End game */
+function endGame() {
+  gameEnded = true;
+
+  setTimeout(()=>{
+    fadeOutAudio(rainSound);
+    fadeOutAudio(pianoSound);
+    textEl.style.opacity = 0;
+    choicesEl.innerHTML = `
+      <button class="end-btn" onclick="window.location.href='https://discord.gg/YOURSERVER'">
+        Join Discord
+      </button>
+    `;
+  },7000);
+
+  setTimeout(()=>{
+    endfade.style.opacity = 1;
+  },10000);
+}
+
+/* Loading */
+setTimeout(()=>{
+  document.getElementById("loading").style.opacity=0;
+  document.getElementById("container").style.opacity=1;
+  setTimeout(()=>{
+    document.getElementById("loading").remove();
+    showScene("hospital");
+  },2000);
+},1200);
+
+/* PWA install */
+let deferredPrompt;
+window.addEventListener("beforeinstallprompt", e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  installBtn.style.display="block";
+});
+installBtn.onclick=()=>{
+  deferredPrompt.prompt();
+};
+</script>
+
+</body>
+</html>
